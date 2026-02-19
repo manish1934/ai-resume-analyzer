@@ -56,4 +56,3 @@ if uploaded_resume and job_description:
 
     st.pyplot(fig)
 
-
