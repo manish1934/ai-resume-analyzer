@@ -40,18 +40,26 @@ job_skill_database = {
     "backend developer": [
         "python", "django", "flask",
         "node", "sql", "api", "mongodb"
+    ],
+    "devops engineer": [
+        "aws", "docker", "kubernetes",
+        "linux", "ci/cd", "jenkins"
+    ],
+    "cyber security analyst": [
+        "network security", "linux",
+        "penetration testing", "firewall",
+        "cyber security"
     ]
 }
 
 # ---------------------------
-# UI
+# UI Setup
 # ---------------------------
 st.set_page_config(page_title="AI Resume Screening System", page_icon="🚀")
 st.title("🚀 AI Resume Skill Analyzer")
 
 mode = st.selectbox("Select Mode", ["Student Mode", "HR Mode"])
-
-job_title = st.text_input("Enter Job Title").lower()
+job_title = st.text_input("Enter Job Title (e.g., Software Engineer)").lower()
 
 # ====================================================
 # 🎓 STUDENT MODE
@@ -76,17 +84,28 @@ if mode == "Student Mode":
             st.metric("Skill Match %", f"{score}%")
             st.progress(score / 100)
 
-            st.subheader("📌 Required Skills")
+            st.subheader("📌 Required Skills for This Job")
             st.write(", ".join(required_skills))
 
-            st.subheader("✅ Skills Found")
+            st.subheader("✅ Skills Found in Resume")
             st.write(", ".join(matched_skills) if matched_skills else "No matching skills found.")
 
-            st.subheader("❌ Missing Skills")
+            st.subheader("❌ Missing Skills (Add These)")
             st.write(", ".join(missing_skills) if missing_skills else "No major skills missing.")
 
+            st.subheader("💡 Suggestions")
+            if score < 50:
+                st.write("- Add more relevant technical skills.")
+                st.write("- Work on projects related to this job role.")
+                st.write("- Customize resume based on job requirements.")
+            elif score < 75:
+                st.write("- Add measurable achievements.")
+                st.write("- Add certifications or internships.")
+            else:
+                st.write("- Your resume is well aligned with this role.")
+
         else:
-            st.warning("Job title not found in database.")
+            st.warning("Job title not found in database. Try common roles like Software Engineer, Data Analyst, etc.")
 
 # ====================================================
 # 🏢 HR MODE
@@ -94,7 +113,7 @@ if mode == "Student Mode":
 elif mode == "HR Mode":
 
     uploaded_resumes = st.file_uploader(
-        "Upload Multiple Resumes",
+        "Upload Multiple Resumes (PDF)",
         type=["pdf"],
         accept_multiple_files=True
     )
@@ -115,12 +134,13 @@ elif mode == "HR Mode":
                 results.append({
                     "Candidate": resume.name,
                     "Match %": score,
-                    "Matched Skills Count": len(matched_skills)
+                    "Matched Skills Count": len(matched_skills),
+                    "Matched Skills": ", ".join(matched_skills)
                 })
 
             df = pd.DataFrame(results)
 
-            # Smart Sorting
+            # Smart sorting logic
             df = df.sort_values(
                 by=["Match %", "Matched Skills Count"],
                 ascending=False
@@ -132,18 +152,32 @@ elif mode == "HR Mode":
             if not df.empty:
                 st.success(f"Top Candidate: {df.iloc[0]['Candidate']} ({df.iloc[0]['Match %']}%)")
 
-            # Horizontal Graph
+            # ------------------------
+            # Clean Horizontal Graph
+            # ------------------------
             st.subheader("📊 Candidate Comparison")
 
             fig, ax = plt.subplots(figsize=(10, 6))
-
             ax.barh(df["Candidate"][::-1], df["Match %"][::-1])
+
             ax.set_xlabel("Match Percentage")
             ax.set_ylabel("Candidates")
             ax.set_title("Candidate Match Comparison")
 
             plt.tight_layout()
             st.pyplot(fig)
+
+            # ------------------------
+            # CSV Download Option
+            # ------------------------
+            csv = df.to_csv(index=False).encode("utf-8")
+
+            st.download_button(
+                label="📥 Download Ranking CSV",
+                data=csv,
+                file_name="candidate_ranking.csv",
+                mime="text/csv"
+            )
 
         else:
             st.warning("Job title not found in database.")
