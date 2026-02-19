@@ -1,14 +1,9 @@
 import streamlit as st
 import PyPDF2
-import spacy
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 import matplotlib.pyplot as plt
-
-# Load spaCy model (installed via requirements.txt)
-nlp = spacy.load("en_core_web_sm")
-
 
 # Function to extract text from PDF
 def extract_text_from_pdf(file):
@@ -52,6 +47,4 @@ if uploaded_resume and job_description:
     ax.set_title("Resume vs Job Description Match")
 
     st.pyplot(fig)
-
-
 
