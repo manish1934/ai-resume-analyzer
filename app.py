@@ -1,18 +1,13 @@
 import streamlit as st
 import PyPDF2
 import spacy
-import spacy.cli
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Download spaCy model automatically (for Streamlit Cloud)
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    spacy.cli.download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+# Load spaCy model (installed via requirements.txt)
+nlp = spacy.load("en_core_web_sm")
 
 
 # Function to extract text from PDF
@@ -20,7 +15,8 @@ def extract_text_from_pdf(file):
     pdf_reader = PyPDF2.PdfReader(file)
     text = ""
     for page in pdf_reader.pages:
-        text += page.extract_text()
+        if page.extract_text():
+            text += page.extract_text()
     return text
 
 
@@ -31,6 +27,7 @@ uploaded_resume = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
 job_description = st.text_area("Paste Job Description Here")
 
 if uploaded_resume and job_description:
+
     resume_text = extract_text_from_pdf(uploaded_resume)
 
     text = [resume_text, job_description]
@@ -43,7 +40,7 @@ if uploaded_resume and job_description:
 
     st.subheader(f"Match Percentage: {match_percentage}%")
 
-    # Plot
+    # Create visualization
     data = pd.DataFrame({
         "Category": ["Match", "Gap"],
         "Value": [match_percentage, 100 - match_percentage]
@@ -55,4 +52,6 @@ if uploaded_resume and job_description:
     ax.set_title("Resume vs Job Description Match")
 
     st.pyplot(fig)
+
+
 
