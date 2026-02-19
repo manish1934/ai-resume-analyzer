@@ -15,8 +15,7 @@ def extract_text_from_pdf(file):
     return text.lower()
 
 # ---------------------------
-# Global Skill Database (Scalable)
-# Add more skills anytime
+# Global Skill Database
 # ---------------------------
 global_skills = [
     "python","java","c++","c","sql","mysql","mongodb",
@@ -43,10 +42,10 @@ def extract_skills(text):
     return list(set(detected))
 
 # ---------------------------
-# UI
+# UI Setup
 # ---------------------------
 st.set_page_config(page_title="AI Resume Screening System", page_icon="🚀")
-st.title("🚀 AI Resume Screening & Skill Gap Analysis (Dynamic Version)")
+st.title("🚀 AI Resume Screening & Skill Gap Analysis")
 
 mode = st.selectbox("Select Mode", ["Student Mode", "HR Mode"])
 
@@ -70,33 +69,20 @@ if mode == "Student Mode":
         matched_skills = list(set(required_skills) & set(resume_skills))
         missing_skills = list(set(required_skills) - set(resume_skills))
 
-        if len(required_skills) > 0:
-            score = round((len(matched_skills) / len(required_skills)) * 100, 2)
-        else:
-            score = 0
+        score = round((len(matched_skills) / len(required_skills)) * 100, 2) if required_skills else 0
 
         st.subheader("📊 Match Score")
         st.metric("Match Percentage", f"{score}%")
         st.progress(score / 100 if score > 0 else 0)
 
         st.subheader("📌 Required Skills (From JD)")
-        st.write(", ".join(required_skills) if required_skills else "No skills detected from JD.")
+        st.write(", ".join(required_skills) if required_skills else "No skills detected.")
 
-        st.subheader("✅ Skills Present in Resume")
+        st.subheader("✅ Matched Skills")
         st.write(", ".join(matched_skills) if matched_skills else "No matching skills found.")
 
-        st.subheader("❌ Missing Skills (Add These)")
-        st.write(", ".join(missing_skills) if missing_skills else "Excellent! No major skills missing.")
-
-        st.subheader("💡 Suggestions")
-        if score < 50:
-            st.write("- Add more relevant technical skills.")
-            st.write("- Customize resume based on job description.")
-        elif score < 75:
-            st.write("- Add measurable achievements.")
-            st.write("- Add certifications or projects.")
-        else:
-            st.write("- Your resume is well aligned with this job.")
+        st.subheader("❌ Missing Skills")
+        st.write(", ".join(missing_skills) if missing_skills else "No major skills missing.")
 
 # =====================================================
 # 🏢 HR MODE
@@ -121,11 +107,7 @@ elif mode == "HR Mode":
             resume_skills = extract_skills(resume_text)
 
             matched_skills = list(set(required_skills) & set(resume_skills))
-
-            if len(required_skills) > 0:
-                score = round((len(matched_skills) / len(required_skills)) * 100, 2)
-            else:
-                score = 0
+            score = round((len(matched_skills) / len(required_skills)) * 100, 2) if required_skills else 0
 
             results.append({
                 "Candidate": resume.name,
@@ -134,23 +116,36 @@ elif mode == "HR Mode":
             })
 
         df = pd.DataFrame(results)
-        df = df.sort_values(by="Match %", ascending=False)
+        df = df.sort_values(by="Match %", ascending=True)  # ascending for horizontal chart
 
         st.subheader("🏆 Candidate Ranking")
-        st.dataframe(df)
+        st.dataframe(df.sort_values(by="Match %", ascending=False))
 
         if not df.empty:
-            st.success(f"Top Candidate: {df.iloc[0]['Candidate']} ({df.iloc[0]['Match %']}%)")
+            top_candidate = df.sort_values(by="Match %", ascending=False).iloc[0]
+            st.success(f"Top Candidate: {top_candidate['Candidate']} ({top_candidate['Match %']}%)")
 
-        # Graph
-        st.subheader("📊 Comparison Chart")
-        fig, ax = plt.subplots()
-        ax.bar(df["Candidate"], df["Match %"])
-        ax.set_ylabel("Match Percentage")
+        # ---------------------------
+        # CLEAN HORIZONTAL BAR CHART
+        # ---------------------------
+        st.subheader("📊 Candidate Comparison")
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.barh(df["Candidate"], df["Match %"])
+        ax.set_xlabel("Match Percentage")
+        ax.set_ylabel("Candidates")
+        ax.set_title("Candidate Match Comparison")
+
+        plt.tight_layout()
+
         st.pyplot(fig)
 
-        # CSV Download
-        csv = df.to_csv(index=False).encode("utf-8")
+        # ---------------------------
+        # CSV DOWNLOAD
+        # ---------------------------
+        csv = df.sort_values(by="Match %", ascending=False).to_csv(index=False).encode("utf-8")
+
         st.download_button(
             label="📥 Download Ranking CSV",
             data=csv,
