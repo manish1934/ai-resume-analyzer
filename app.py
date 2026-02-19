@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ---------------------------
-# Extract text from PDF
+# Extract Text From PDF
 # ---------------------------
 def extract_text_from_pdf(file):
     pdf_reader = PyPDF2.PdfReader(file)
@@ -15,56 +15,65 @@ def extract_text_from_pdf(file):
     return text.lower()
 
 # ---------------------------
-# Master IT Skills List
+# Role Based Skill Database
 # ---------------------------
-master_skills = [
-    "python", "java", "c++", "c#", "javascript", "html", "css",
-    "react", "angular", "node", "django", "flask",
-    "sql", "mongodb", "mysql", "postgresql",
-    "machine learning", "deep learning", "ai",
-    "data analysis", "pandas", "numpy",
-    "aws", "azure", "gcp",
-    "docker", "kubernetes",
-    "linux", "git", "github",
-    "api", "rest api",
-    "data structures", "algorithms",
-    "cyber security", "network security",
-    "testing", "selenium",
-    "android", "kotlin", "swift",
-    "blockchain"
-]
+role_based_skills = {
+    "ai engineer": [
+        "python", "machine learning", "deep learning",
+        "tensorflow", "pytorch", "numpy"
+    ],
+    "ml engineer": [
+        "python", "machine learning", "scikit-learn",
+        "pandas", "numpy", "model"
+    ],
+    "data scientist": [
+        "python", "machine learning", "statistics",
+        "pandas", "numpy", "sql"
+    ],
+    "cloud engineer": [
+        "aws", "azure", "gcp",
+        "docker", "kubernetes", "linux"
+    ],
+    "devops engineer": [
+        "docker", "kubernetes", "linux",
+        "ci/cd", "jenkins", "aws"
+    ],
+    "frontend developer": [
+        "html", "css", "javascript",
+        "react", "bootstrap"
+    ],
+    "backend developer": [
+        "python", "django", "flask",
+        "node", "sql", "api"
+    ],
+    "software engineer": [
+        "python", "java", "c++",
+        "data structures", "algorithms", "git"
+    ]
+}
 
 # ---------------------------
-# Dynamic Skill Filter Based on Job Role
+# Smart Role Matching
 # ---------------------------
 def get_required_skills(job_title):
-    job_title = job_title.lower()
+    job_title = job_title.lower().strip()
 
-    required = []
+    for role in role_based_skills:
+        if role in job_title:
+            return role, role_based_skills[role]
 
-    for skill in master_skills:
-        if skill in job_title:
-            required.append(skill)
-
-    # If no direct match found, return general IT core skills
-    if not required:
-        required = [
-            "python", "sql", "git",
-            "data structures", "algorithms"
-        ]
-
-    return required
+    return None, None
 
 # ---------------------------
 # UI Setup
 # ---------------------------
 st.set_page_config(page_title="AI Resume Screening System", page_icon="🚀")
-st.title("🚀 AI Resume Skill Analyzer (Dynamic IT Mode)")
+st.title("🚀 AI Resume Skill Analyzer")
 
 mode = st.selectbox("Select Mode", ["Student Mode", "HR Mode"])
-job_title = st.text_input("Enter Any IT Job Role (Example: Cloud Engineer, AI Developer)")
+job_title = st.text_input("Enter IT Job Role (Example: AI Engineer, Backend Developer)")
 
-required_skills = get_required_skills(job_title)
+matched_role, required_skills = get_required_skills(job_title)
 
 # ====================================================
 # 🎓 STUDENT MODE
@@ -75,25 +84,38 @@ if mode == "Student Mode":
 
     if job_title and uploaded_resume:
 
-        resume_text = extract_text_from_pdf(uploaded_resume)
+        if matched_role:
 
-        matched_skills = [skill for skill in required_skills if skill in resume_text]
-        missing_skills = [skill for skill in required_skills if skill not in resume_text]
+            resume_text = extract_text_from_pdf(uploaded_resume)
 
-        score = round((len(matched_skills) / len(required_skills)) * 100, 2)
+            matched_skills = [
+                skill for skill in required_skills
+                if skill in resume_text
+            ]
 
-        st.subheader("📌 Required Skills (Auto Generated)")
-        st.write(", ".join(required_skills))
+            missing_skills = [
+                skill for skill in required_skills
+                if skill not in resume_text
+            ]
 
-        st.subheader("📊 Match Score")
-        st.metric("Skill Match %", f"{score}%")
-        st.progress(score / 100)
+            score = round(
+                (len(matched_skills) / len(required_skills)) * 100, 2
+            )
 
-        st.subheader("✅ Skills Found")
-        st.write(", ".join(matched_skills) if matched_skills else "No matching skills found.")
+            st.subheader(f"📌 Matched Role: {matched_role.title()}")
 
-        st.subheader("❌ Missing Skills")
-        st.write(", ".join(missing_skills) if missing_skills else "No major skills missing.")
+            st.subheader("📊 Match Score")
+            st.metric("Skill Match %", f"{score}%")
+            st.progress(score / 100)
+
+            st.subheader("✅ Skills Found")
+            st.write(", ".join(matched_skills) if matched_skills else "No matching skills found.")
+
+            st.subheader("❌ Missing Skills")
+            st.write(", ".join(missing_skills) if missing_skills else "No major skills missing.")
+
+        else:
+            st.error("Role not found in system database.")
 
 # ====================================================
 # 🏢 HR MODE
@@ -108,38 +130,65 @@ elif mode == "HR Mode":
 
     if job_title and uploaded_resumes:
 
-        results = []
+        if matched_role:
 
-        for resume in uploaded_resumes:
-            resume_text = extract_text_from_pdf(resume)
+            results = []
 
-            matched_skills = [skill for skill in required_skills if skill in resume_text]
-            score = round((len(matched_skills) / len(required_skills)) * 100, 2)
+            for resume in uploaded_resumes:
+                resume_text = extract_text_from_pdf(resume)
 
-            results.append({
-                "Candidate": resume.name,
-                "Match %": score
-            })
+                matched_skills = [
+                    skill for skill in required_skills
+                    if skill in resume_text
+                ]
 
-        df = pd.DataFrame(results)
-        df = df.sort_values(by="Match %", ascending=False).reset_index(drop=True)
+                score = round(
+                    (len(matched_skills) / len(required_skills)) * 100, 2
+                )
 
-        st.subheader("🏆 Candidate Ranking")
-        st.dataframe(df)
+                results.append({
+                    "Candidate": resume.name,
+                    "Match %": score,
+                    "Matched Skills Count": len(matched_skills)
+                })
 
-        # Graph
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.barh(df["Candidate"][::-1], df["Match %"][::-1])
-        ax.set_xlabel("Match Percentage")
-        plt.tight_layout()
-        st.pyplot(fig)
+            df = pd.DataFrame(results)
 
-        # CSV Download
-        csv = df.to_csv(index=False).encode("utf-8")
+            df = df.sort_values(
+                by=["Match %", "Matched Skills Count"],
+                ascending=False
+            ).reset_index(drop=True)
 
-        st.download_button(
-            label="📥 Download Ranking CSV",
-            data=csv,
-            file_name="candidate_ranking.csv",
-            mime="text/csv"
-        )
+            st.subheader(f"🏆 Ranking for: {matched_role.title()}")
+            st.dataframe(df)
+
+            if not df.empty:
+                st.success(
+                    f"Top Candidate: {df.iloc[0]['Candidate']} "
+                    f"({df.iloc[0]['Match %']}%)"
+                )
+
+            # Horizontal Graph
+            st.subheader("📊 Candidate Comparison")
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.barh(df["Candidate"][::-1], df["Match %"][::-1])
+            ax.set_xlabel("Match Percentage")
+            ax.set_ylabel("Candidates")
+            plt.tight_layout()
+            st.pyplot(fig)
+
+            # CSV Download
+            csv = df.to_csv(index=False).encode("utf-8")
+
+            st.download_button(
+                label="📥 Download Ranking CSV",
+                data=csv,
+                file_name="candidate_ranking.csv",
+                mime="text/csv"
+            )
+
+        else:
+            st.error("Role not found in system database.")
+
+
