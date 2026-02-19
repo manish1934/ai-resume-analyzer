@@ -1,11 +1,9 @@
 import streamlit as st
 import PyPDF2
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# --------- Function to extract text from PDF ----------
+# -------- Extract text from PDF --------
 def extract_text_from_pdf(file):
     pdf_reader = PyPDF2.PdfReader(file)
     text = ""
@@ -14,84 +12,144 @@ def extract_text_from_pdf(file):
             text += page.extract_text()
     return text.lower()
 
+# -------- Expanded Skill Database --------
+role_skills = {
+    "software engineer": [
+        "python", "java", "c++", "data structures",
+        "algorithms", "sql", "git", "api",
+        "oop", "problem solving"
+    ],
+    "data analyst": [
+        "excel", "sql", "python",
+        "power bi", "tableau",
+        "statistics", "data visualization"
+    ],
+    "data scientist": [
+        "python", "machine learning",
+        "deep learning", "pandas",
+        "numpy", "statistics"
+    ],
+    "frontend developer": [
+        "html", "css", "javascript",
+        "react", "bootstrap"
+    ]
+}
 
-# --------- Predefined Skills List ----------
-skills_list = [
-    "python", "java", "c++", "sql", "machine learning",
-    "data analysis", "excel", "aws", "docker",
-    "power bi", "tableau", "html", "css",
-    "javascript", "react", "node"
-]
+# -------- General Skill List for Auto Extraction --------
+general_skills = list(set(sum(role_skills.values(), [])))
 
+# -------- App UI --------
+st.set_page_config(page_title="AI Resume Screening System", page_icon="🚀")
+st.title("🚀 AI Resume Screening & Skill Gap Analysis")
 
-# --------- Streamlit UI ----------
-st.set_page_config(page_title="AI Resume Analyzer", page_icon="📄")
+mode = st.selectbox("Select Mode", ["Student Mode", "HR Mode"])
+job_role = st.text_input("Enter Job Role").lower()
 
-st.title("📄 AI Resume Analyzer Pro")
+# ====================================================
+# 🎓 STUDENT MODE
+# ====================================================
+if mode == "Student Mode":
 
-uploaded_resume = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
-job_description = st.text_area("Paste Job Description Here")
+    uploaded_resume = st.file_uploader("Upload Resume (PDF)", type=["pdf"])
 
-if uploaded_resume and job_description:
+    if uploaded_resume and job_role:
 
-    resume_text = extract_text_from_pdf(uploaded_resume)
-    job_description = job_description.lower()
+        resume_text = extract_text_from_pdf(uploaded_resume)
 
-    # -------- Similarity Score --------
-    text = [resume_text, job_description]
+        # Auto Skill Extraction
+        extracted_skills = [skill for skill in general_skills if skill in resume_text]
 
-    cv = CountVectorizer()
-    count_matrix = cv.fit_transform(text)
+        st.subheader("🔍 Detected Skills in Resume")
+        st.write(", ".join(extracted_skills) if extracted_skills else "No known skills detected.")
 
-    similarity_score = cosine_similarity(count_matrix)[0][1]
-    match_percentage = round(similarity_score * 100, 2)
+        if job_role in role_skills:
 
-    st.subheader("📊 Match Score")
-    st.metric(label="Resume Match Percentage", value=f"{match_percentage}%")
-    st.progress(similarity_score)
+            required_skills = role_skills[job_role]
 
-    # -------- Skill Matching --------
-    resume_skills = [skill for skill in skills_list if skill in resume_text]
-    job_skills = [skill for skill in skills_list if skill in job_description]
+            matched_skills = [skill for skill in required_skills if skill in resume_text]
+            missing_skills = [skill for skill in required_skills if skill not in resume_text]
 
-    matched_skills = list(set(resume_skills) & set(job_skills))
-    missing_skills = list(set(job_skills) - set(resume_skills))
+            score = round((len(matched_skills) / len(required_skills)) * 100, 2)
 
-    st.subheader("✅ Matched Skills")
-    if matched_skills:
-        st.write(", ".join(matched_skills))
-    else:
-        st.write("No matched skills found.")
+            st.subheader("📊 Match Score")
+            st.metric("Skill Match Percentage", f"{score}%")
+            st.progress(score / 100)
 
-    st.subheader("❌ Missing Skills (You Should Add)")
-    if missing_skills:
-        st.write(", ".join(missing_skills))
-    else:
-        st.write("Great! No major skills missing.")
+            st.subheader("❌ Skills You Should Add")
+            st.write(", ".join(missing_skills) if missing_skills else "Excellent! No major skills missing.")
 
-    # -------- Suggestions --------
-    st.subheader("💡 Suggestions to Improve Resume")
+            # AI Style Suggestion
+            st.subheader("💡 Resume Improvement Suggestions")
 
-    if match_percentage < 50:
-        st.write("- Add more relevant technical skills.")
-        st.write("- Customize resume according to job description.")
-    elif match_percentage < 75:
-        st.write("- Add measurable achievements (e.g., Increased sales by 30%).")
-        st.write("- Include certifications or projects.")
-    else:
-        st.write("- Your resume is well optimized!")
-        st.write("- Just improve formatting for better ATS compatibility.")
+            if score < 50:
+                st.write("- Add more technical skills relevant to this role.")
+                st.write("- Add internship or project experience.")
+            elif score < 75:
+                st.write("- Add measurable achievements (e.g., Improved system performance by 30%).")
+                st.write("- Mention certifications.")
+            else:
+                st.write("- Your resume is strong. Improve formatting for ATS optimization.")
 
-    # -------- Visualization --------
-    data = pd.DataFrame({
-        "Category": ["Match", "Gap"],
-        "Value": [match_percentage, 100 - match_percentage]
-    })
+        else:
+            st.warning("Role not found in database.")
 
-    fig, ax = plt.subplots()
-    ax.bar(data["Category"], data["Value"])
-    ax.set_ylabel("Percentage")
-    ax.set_title("Resume vs Job Description Match")
-    st.pyplot(fig)
+# ====================================================
+# 🏢 HR MODE
+# ====================================================
+elif mode == "HR Mode":
 
+    uploaded_resumes = st.file_uploader(
+        "Upload Multiple Resumes (PDF)",
+        type=["pdf"],
+        accept_multiple_files=True
+    )
 
+    if uploaded_resumes and job_role:
+
+        if job_role in role_skills:
+
+            required_skills = role_skills[job_role]
+            results = []
+
+            for resume in uploaded_resumes:
+                resume_text = extract_text_from_pdf(resume)
+
+                matched_skills = [skill for skill in required_skills if skill in resume_text]
+                missing_skills = [skill for skill in required_skills if skill not in resume_text]
+
+                score = round((len(matched_skills) / len(required_skills)) * 100, 2)
+
+                results.append({
+                    "Candidate": resume.name,
+                    "Match %": score,
+                    "Missing Skills": ", ".join(missing_skills)
+                })
+
+            df = pd.DataFrame(results)
+            df = df.sort_values(by="Match %", ascending=False)
+
+            st.subheader("🏆 Candidate Ranking")
+            st.dataframe(df)
+
+            st.success(f"Top Candidate: {df.iloc[0]['Candidate']} ({df.iloc[0]['Match %']}%)")
+
+            # Graph Dashboard
+            st.subheader("📊 Score Visualization")
+
+            fig, ax = plt.subplots()
+            ax.bar(df["Candidate"], df["Match %"])
+            ax.set_ylabel("Match Percentage")
+            ax.set_title("Candidate Comparison")
+            st.pyplot(fig)
+
+            # CSV Download
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Shortlist as CSV",
+                data=csv,
+                file_name="candidate_ranking.csv",
+                mime="text/csv"
+            )
+
+        else:
+            st.warning("Role not found in database.")
