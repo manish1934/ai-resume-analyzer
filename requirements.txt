@@ -1,8 +1,8 @@
 streamlit
 PyPDF2
 scikit-learn
-spacy
 pandas
 matplotlib
-en-core-web-sm==3.8.0
+
+
 
